@@ -1,0 +1,22 @@
+parallelograms 
+	bloom filter
+	last assignment
+	final paper
+
+rv
+	assignment 2
+	assignment 3
+	project work
+	project paper
+	project presentation
+	
+game ai
+	make actual td
+	implement rotation or w/e
+
+senior design
+	clean up repo
+	make sure everyone is creating data
+	maybe make spreadsheet of different aspects of different algos
+	figure out why brians algo is slow
+	final paper still needs to be done

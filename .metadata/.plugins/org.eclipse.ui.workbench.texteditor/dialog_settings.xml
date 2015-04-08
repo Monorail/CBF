@@ -2,12 +2,13 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="capacities" key="selection"/>
+		<item value="new hashS" key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
+			<item value="new hashS"/>
 			<item value="capacities"/>
 			<item value="llOps = new ArrayList&lt;String&gt;();"/>
 			<item value="ing&gt; allOps = new ArrayList&lt;String&gt;();"/>
