@@ -1,37 +1,27 @@
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class BloomFilter<AnyType> implements Runnable {
 
-	static int numThreads = 4;
+	static int numThreads = 1;
 	static ArrayList<Thread> threads = new ArrayList<Thread>();
 	static ArrayList<BloomFilter<String>> workers = new ArrayList<BloomFilter<String>>();
 	static hashSet[] hashTables;
-	static int tableSize = 11;
+	static int tableSize = 503;
 	static int numTables = 5;
-	static AtomicInteger finishedThreads = new AtomicInteger(0);
+	static int numElems = 1000;
 	static AtomicBoolean[] announceTable;
 
 	// set up wait free queue for adding elements
 	static ConcurrentLinkedQueue<String> opQueue = new ConcurrentLinkedQueue<String>();
 
-	public static void main(String[] args) {
-		// sample strings
-		String[] filterStrs = { "orange", "baseball", "apple", "football", "nuclear", "prairie", "niner", "backgammon" };
-
-		// prevent nonconcurrent executions
-		// if (numThreads <= 1) {
-		// //System.out.println("You can't use <= one thread");
-		// return;
-		// }
-
-		// currently using varying table sizes rather than multiple hash
-		// functions
-		// ***Intend to change***
-
+	public static void main(String[] args) throws FileNotFoundException {
 		// initialize hash table and capacity array
 		hashTables = new hashSet[numTables];
 		announceTable = new AtomicBoolean[numTables];
@@ -40,26 +30,51 @@ public class BloomFilter<AnyType> implements Runnable {
 			announceTable[i] = new AtomicBoolean(false);
 		}
 
-		// generate 40 operations at random to perform
-		Random R = new Random();
-		for (int i = 0; i < 9999; i++) {
-			Boolean opAdd = R.nextBoolean();
-			String operation = opAdd ? "add " : "con ";
-
-			int strsIndex = R.nextInt(filterStrs.length);
-			operation += filterStrs[strsIndex];
-
-			// for(int j = 1+R.nextInt(11); j >=0; j--){
-			// char derp = (char) (R.nextInt(26) + 'a');
-			// operation += derp;
-			// }
-
-			// add operations to wait-free queue
-			opQueue.add(operation);
-
-			// System.out.println(operation);
-		}
-
+		 // sample strings
+		 Scanner sc = new Scanner(new File("magicRules.txt"));
+		 ArrayList<String> corpus = new ArrayList<String>();
+		 while(sc.hasNext()){
+			 corpus.add(sc.next());
+		 }
+		
+		 String[] filterStrs = corpus.toArray(new String[corpus.size()]);//=
+//		 (String[]) corpus.toArray(); //{ "orange", "baseball", "apple",
+//		 "football", "nuclear", "prairie", "niner", "backgammon" };
+		
+		 // prevent nonconcurrent executions
+		 // if (numThreads <= 1) {
+		 // //System.out.println("You can't use <= one thread");
+		 // return;
+		 // }
+		
+		 // currently using varying table sizes rather than multiple hash
+		 // functions
+		 // ***Intend to change***
+		
+		
+		 // generate 40 operations at random to perform
+		 Random R = new Random();
+		 for (int i = 0; i < numElems; i++) {
+		 Boolean opAdd = R.nextBoolean();
+		 String operation = opAdd ? "add " : "con ";
+		
+		 int strsIndex = R.nextInt(filterStrs.length);
+		 operation += filterStrs[strsIndex];
+		
+		 // for(int j = 1+R.nextInt(11); j >=0; j--){
+		 // char derp = (char) (R.nextInt(26) + 'a');
+		 // operation += derp;
+		 // }
+		
+		 // add operations to wait-free queue
+		 opQueue.add(operation);
+		
+		 // System.out.println(operation);
+		 }
+//		opQueue.add("add derp");
+//		opQueue.add("add derp");
+//		opQueue.add("con derp");
+//		opQueue.add("con thessss");
 		// initialize threads
 		for (int i = 0; i < numThreads; i++) {
 			BloomFilter<String> temp = new BloomFilter<String>(i);
@@ -71,7 +86,6 @@ public class BloomFilter<AnyType> implements Runnable {
 		for (int i = 0; i < numThreads; i++) {
 			threads.get(i).start();
 		}
-
 	}
 
 	int ID;
@@ -85,16 +99,19 @@ public class BloomFilter<AnyType> implements Runnable {
 		String operation = "";
 		// poll wait-free queue for an operation until queue is empty
 		while ((operation = opQueue.poll()) != null) {
-			// //System.out.println(ID + " " + operation);
+			System.out.println(ID + " " + operation);
 
 			// parse the operation
 			String[] ops = operation.split(" ");
 			// call contains method
 			if (ops[0].equals("con")) {
-				// System.out.printf("The bloom filter %s the name %s\n",
-				// contains((AnyType) ops[1]) ? "may contain"
-				// : "does not contain", ops[1]);
+				if (contains((AnyType) ops[1])) {
+					System.out.println("The bloom filter may contain the name " + ops[1]);
+				} else {
+					System.out.println("The bloom filter does not contain the name " + ops[1]);
+				}
 			}
+
 			// call add method
 			else {
 				add((AnyType) ops[1]);
@@ -106,26 +123,28 @@ public class BloomFilter<AnyType> implements Runnable {
 	// adds object to the filter
 	public void add(AnyType o) {
 		// mark bits that correspond to hash value in each hash set as true
+		// int
 		for (int i = 0; i < hashTables.length; i++) {
 			int hVal = Math.abs(MurmurHash.hashItUp(o, i) % tableSize);
 			hashTables[i].add(hVal);
+			// if(i ==4)
+			// System.out.println(hVal);
 		}
 	}
 
 	// checks for object inside the filter
+	// all true ->  return true
+	// any false -> return false
 	public boolean contains(AnyType o) {
 		// generate hash code for the object
-		int hval = o.hashCode();
-
-		// resolve indexOutOfBoundsError
-		if (hval < 0)
-			hval = -hval;
 
 		// check bits that correspond to hash value in each hash set
 		// if every bit is marked, the filter MAY contain the object
-		for (int i = 0; i < hashTables.length; i++)
-			if (hashTables[i].contains(hval % tableSize))
+		for (int i = 0; i < hashTables.length; i++){
+			int hval = Math.abs(MurmurHash.hashItUp(o, i) % tableSize);
+			if (!hashTables[i].contains(hval % tableSize))
 				return false;
+		}
 
 		return true;
 	}
@@ -133,7 +152,7 @@ public class BloomFilter<AnyType> implements Runnable {
 	static class hashSet {
 		hashSet next = null;
 		int tableSize, ID;
-		AtomicInteger capacity;
+		int capacity = 0;
 		boolean full = false;
 		int link;
 		boolean[] set;
@@ -142,7 +161,6 @@ public class BloomFilter<AnyType> implements Runnable {
 			this.link = link;
 			this.tableSize = size;
 			this.ID = ID;
-			capacity = new AtomicInteger(0);
 			set = new boolean[tableSize];
 			for (int i = 0; i < tableSize; i++) {
 				// //System.out.println("set");
@@ -153,27 +171,38 @@ public class BloomFilter<AnyType> implements Runnable {
 		}
 
 		public boolean contains(int index) {
-			if (next == null)
-				return set[index % tableSize];
+			if (set[index % tableSize]){
+//				System.out.println(ID +"[" +index%tableSize +"] return true");
+				return true;
+			}
+			if (next == null){
+//				System.out.println(ID +"[" +index%tableSize +"] return false");
+				return false;
+			}
 			return set[index % tableSize] || next.contains(index % tableSize);
 		}
 
 		public void add(int index) {
-			// //System.out.print("##### add ");
 			// if the hash set is not full
+			if(set[index % tableSize]){
+				return;
+			}
 			if (!full) {
 				// System.out.println(ID + " not full");
 				// set the index value to true
-				if (!set[index % tableSize]) {
-					// System.out.println(ID + " index not set");
-					// System.out.print("###set");
-					capacity.incrementAndGet();
-					// System.out.println("full: " + (((float) capacity.get()) /
-					// tableSize));
-					full = (((float) capacity.get()) / tableSize) > (.5f);
-					// if(full)
-					// System.out.println("full set true");
-				}
+//				System.out.println(ID +"[" +index%tableSize +"] not set");
+//				System.out.print("###set");
+				int tempCt = 0;
+				for (boolean b : set)
+					if (b)
+						tempCt++;
+				tempCt++;
+				capacity = tempCt;
+				// System.out.println("full: " + (((float) capacity.get()) /
+				// tableSize));
+				// if(full)
+				// System.out.println("full set true");
+				full = (((float) capacity) / tableSize) > (.5f);
 				set[index % tableSize] = true;
 				// if the hash set is full
 				return;
@@ -186,17 +215,18 @@ public class BloomFilter<AnyType> implements Runnable {
 			// and another thread is not creating the overflow table
 			if (announceTable[ID].compareAndSet(false, true)) {
 
-//				System.out.println(ID + " lock acquired");
+				// System.out.println(ID + " lock acquired");
 				// and the overflow table doesn't exist
 				if (next == null) {
 					// System.out.println(ID + " creating overflow table");
 					// create the overflow table
-					// System.out.println("Creating overflow table for hashset #" + ID);
+					// System.out.println("Creating overflow table for hashset #"
+					// + ID);
 					next = new hashSet(tableSize, ID, link + 1);
 					next.add(index);
 					announceTable[ID].set(false);
 					if (announceTable[ID].get()) {
-						System.out.println(ID + " critical CAS money failed");
+						System.out.println(ID + " critical CAS money failure");
 					} else {
 						// System.out.println(ID + " lock antiacquired");
 					}
@@ -207,7 +237,7 @@ public class BloomFilter<AnyType> implements Runnable {
 					while (announceTable[ID].get())
 						;
 					if (next == null)
-						System.out.println("1 goat ladder");
+//						System.out.println("1 goat ladder");
 					next.add(index);
 				}
 			} else {
@@ -215,7 +245,7 @@ public class BloomFilter<AnyType> implements Runnable {
 				while (announceTable[ID].get())
 					;
 				if (next == null)
-					System.out.println("2 goat ladder");
+//					System.out.println("2 goat ladder");
 				next.add(index);
 			}
 

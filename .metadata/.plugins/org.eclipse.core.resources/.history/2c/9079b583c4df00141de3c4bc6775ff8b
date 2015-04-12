@@ -1,0 +1,300 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.Scanner;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+public class BloomFilter<AnyType> implements Runnable {
+
+	static int numThreads = 1;
+	static ArrayList<Thread> threads = new ArrayList<Thread>();
+	static ArrayList<BloomFilter<String>> workers = new ArrayList<BloomFilter<String>>();
+	static hashSet[] hashTables;
+	static int tableSize = 503;
+	static int numTables = 5;
+	static AtomicBoolean[] announceTable;
+
+	// set up wait free queue for adding elements
+	static ConcurrentLinkedQueue<String> opQueue = new ConcurrentLinkedQueue<String>();
+
+	public static void main(String[] args) throws FileNotFoundException {
+		// initialize hash table and capacity array
+		hashTables = new hashSet[numTables];
+		announceTable = new AtomicBoolean[numTables];
+		for (int i = 0; i < numTables; i++) {
+			hashTables[i] = new hashSet(tableSize, i, 0);
+			announceTable[i] = new AtomicBoolean(false);
+		}
+
+		 // sample strings
+		 Scanner sc = new Scanner(new File("magicRules.txt"));
+		 ArrayList<String> corpus = new ArrayList<String>();
+		 while(sc.hasNext()){
+		 corpus.add(sc.next());
+		 }
+		
+		 String[] filterStrs = corpus.toArray(new String[corpus.size()]);//=
+//		 (String[]) corpus.toArray(); //{ "orange", "baseball", "apple",
+//		 "football", "nuclear", "prairie", "niner", "backgammon" };
+		
+		 // prevent nonconcurrent executions
+		 // if (numThreads <= 1) {
+		 // //System.out.println("You can't use <= one thread");
+		 // return;
+		 // }
+		
+		 // currently using varying table sizes rather than multiple hash
+		 // functions
+		 // ***Intend to change***
+		
+		
+		 // generate 40 operations at random to perform
+		 Random R = new Random();
+		 for (int i = 0; i < 999999; i++) {
+		 Boolean opAdd = R.nextBoolean();
+		 String operation = opAdd ? "add " : "con ";
+		
+		 int strsIndex = R.nextInt(filterStrs.length);
+		 operation += filterStrs[strsIndex];
+		
+		 // for(int j = 1+R.nextInt(11); j >=0; j--){
+		 // char derp = (char) (R.nextInt(26) + 'a');
+		 // operation += derp;
+		 // }
+		
+		 // add operations to wait-free queue
+		 opQueue.add(operation);
+		
+		 // System.out.println(operation);
+		 }
+//		opQueue.add("add derp");
+//		opQueue.add("add derp");
+//		opQueue.add("con derp");
+//		opQueue.add("con thessss");
+		// initialize threads
+		for (int i = 0; i < numThreads; i++) {
+			BloomFilter<String> temp = new BloomFilter<String>(i);
+			workers.add(temp);
+			threads.add(new Thread(temp));
+		}
+
+		// start all threads
+		for (int i = 0; i < numThreads; i++) {
+			threads.get(i).start();
+		}
+	}
+
+	int ID;
+
+	public BloomFilter(int ID) {
+		this.ID = ID;
+	}
+
+	@Override
+	public void run() {
+		String operation = "";
+		// poll wait-free queue for an operation until queue is empty
+		while ((operation = opQueue.poll()) != null) {
+			System.out.println(ID + " " + operation);
+
+			// parse the operation
+			String[] ops = operation.split(" ");
+			// call contains method
+			if (ops[0].equals("con")) {
+				if (contains((AnyType) ops[1])) {
+					System.out.println("The bloom filter may contain the name " + ops[1]);
+				} else {
+					System.out.println("The bloom filter does not contain the name " + ops[1]);
+				}
+			}
+
+			// call add method
+			else {
+				add((AnyType) ops[1]);
+				// System.out.println("Added " + ops[1]);
+			}
+		}
+	}
+
+	// adds object to the filter
+	public void add(AnyType o) {
+		// mark bits that correspond to hash value in each hash set as true
+		// int
+		for (int i = 0; i < hashTables.length; i++) {
+			int hVal = Math.abs(MurmurHash.hashItUp(o, i) % tableSize);
+			hashTables[i].add(hVal);
+			// if(i ==4)
+			// System.out.println(hVal);
+		}
+	}
+
+	// checks for object inside the filter
+	// all true ->  return true
+	// any false -> return false
+	public boolean contains(AnyType o) {
+		// generate hash code for the object
+
+		// check bits that correspond to hash value in each hash set
+		// if every bit is marked, the filter MAY contain the object
+		for (int i = 0; i < hashTables.length; i++){
+			int hval = Math.abs(MurmurHash.hashItUp(o, i) % tableSize);
+			if (!hashTables[i].contains(hval % tableSize))
+				return false;
+		}
+
+		return true;
+	}
+
+	static class hashSet {
+		hashSet next = null;
+		int tableSize, ID;
+		int capacity = 0;
+		boolean full = false;
+		int link;
+		boolean[] set;
+
+		public hashSet(int size, int ID, int link) {
+			this.link = link;
+			this.tableSize = size;
+			this.ID = ID;
+			set = new boolean[tableSize];
+			for (int i = 0; i < tableSize; i++) {
+				// //System.out.println("set");
+				set[i] = false;
+			}
+			System.out.println(ID + " created hashLink " + link);
+
+		}
+
+		public boolean contains(int index) {
+			if (set[index % tableSize]){
+//				System.out.println(ID +"[" +index%tableSize +"] return true");
+				return true;
+			}
+			if (next == null){
+//				System.out.println(ID +"[" +index%tableSize +"] return false");
+				return false;
+			}
+			return set[index % tableSize] || next.contains(index % tableSize);
+		}
+
+		public void add(int index) {
+			// if the hash set is not full
+			if (!full) {
+				// System.out.println(ID + " not full");
+				// set the index value to true
+				if (!set[index % tableSize]) {
+//					System.out.println(ID +"[" +index%tableSize +"] not set");
+//					 System.out.print("###set");
+					int tempCt = 0;
+					for (boolean b : set)
+						if (b)
+							tempCt++;
+					tempCt++;
+					capacity = tempCt;
+					// System.out.println("full: " + (((float) capacity.get()) /
+					// tableSize));
+					// if(full)
+					// System.out.println("full set true");
+				}else {
+//					System.out.println(ID +"[" +index%tableSize +"] set");
+				}
+				full = (((float) capacity) / tableSize) > (.5f);
+				set[index % tableSize] = true;
+				// if the hash set is full
+				return;
+			}
+			if (next != null) {
+				// System.out.println(ID + " adding to next");
+				next.add(index);
+				return;
+			}
+			// and another thread is not creating the overflow table
+			if (announceTable[ID].compareAndSet(false, true)) {
+
+				// System.out.println(ID + " lock acquired");
+				// and the overflow table doesn't exist
+				if (next == null) {
+					// System.out.println(ID + " creating overflow table");
+					// create the overflow table
+					// System.out.println("Creating overflow table for hashset #"
+					// + ID);
+					next = new hashSet(tableSize, ID, link + 1);
+					next.add(index);
+					announceTable[ID].set(false);
+					if (announceTable[ID].get()) {
+						System.out.println(ID + " critical CAS money failed");
+					} else {
+						// System.out.println(ID + " lock antiacquired");
+					}
+
+					// and the overflow table does exist
+				} else {
+					announceTable[ID].set(false);
+					while (announceTable[ID].get())
+						;
+					if (next == null)
+						System.out.println("1 goat ladder");
+					next.add(index);
+				}
+			} else {
+				// System.out.println(ID + " another thread is handling it");
+				while (announceTable[ID].get())
+					;
+				if (next == null)
+					System.out.println("2 goat ladder");
+				next.add(index);
+			}
+
+		}
+
+	}
+}
+
+/*
+ * hash set capacity:
+ * 
+ * \subsection{Ways that we combat concurrency problems} Although we have not
+ * devised any solutions to these problems yet, these are the main problems that
+ * we have currently theorized may complicate the wait-free overflow Bloom
+ * filter.
+ * 
+ * \subsubsection{Dynamic Creation of Additional Filters} A thread must take the
+ * burden of creating the overflow filters so that multiple threads do not try
+ * to create the same resource simultaneously. We think that an announcement
+ * table should be implemented for this purpose to ensure that two threads do
+ * not both try to access the same resource simultaneously.
+ * 
+ * \subsubsection{Capacity Checking} While a thread is creating an additional
+ * Bloom filter for a hash set that has reached capacity, the operation of other
+ * threads must be halted to guarantee that more elements are not added to that
+ * hash set. We believe there are three potential solutions to this problem. The
+ * first of the three options is to halt the addition of more elements while the
+ * overflow filter is being created. This is most likely the worst as it
+ * destroys the wait-free property and is also very slow. The second is to have
+ * threads create the buffers before they are needed to be used. If the creation
+ * operation takes too long or too many buffers need to be created at once
+ * however, the program may need to halt to catch up. Finally, the guarantee of
+ * the filter can be relaxed slightly to ensure that the error rate is around a
+ * certain percent most of the time, but may be slightly higher sometimes. If a
+ * buffer creation takes too long, additional elements will be added to the
+ * “full” one which will increase the error rate slightly. We believe right now
+ * that the best solution is a combination of methods two and three.
+ * 
+ * \subsubsection{Record Keeping} The capacity of the individual hash sets must
+ * be kept track of at all times to ensure that the overflow filter is created
+ * while maintaining the false positive guarantee. If each thread were to
+ * calculate the current fullness each time an element is added, it may cause an
+ * unneeded slowdown as the check turns an O(1) operation into an O(n)
+ * operation, as well as being inaccurate as other threads may be changing
+ * elements in the array as others are doing calculations. This may not matter
+ * depending on how the linearization point for the operation is defined but it
+ * is slow none the less. An alternative method is to keep a shared counter
+ * keeping track of the number of elements that have been changed in each hash
+ * set, however this will lead to the usage of highly contested resources, which
+ * is also undesirable.
+ */
+
