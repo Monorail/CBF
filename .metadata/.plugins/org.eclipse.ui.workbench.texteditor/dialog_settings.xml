@@ -9,15 +9,16 @@
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
 			<item value="print()"/>
-			<item value="hashitup"/>
-			<item value="AnyType"/>
-			<item value="H_SHIFT"/>
-			<item value="H_BITS"/>
-			<item value="&quot;con"/>
-			<item value="System"/>
-			<item value="add"/>
+			<item value="&#x09;&#x09;//print();"/>
+			<item value="derp"/>
+			<item value="!"/>
+			<item value="."/>
+			<item value=","/>
+			<item value="new file"/>
+			<item value="maycon"/>
 		</list>
 		<list key="replacehistory">
+			<item value=""/>
 			<item value="String"/>
 			<item value="8"/>
 			<item value="24"/>
@@ -25,14 +26,13 @@
 			<item value="System.out.println"/>
 			<item value="//System.out.print"/>
 			<item value="//system.out.print"/>
-			<item value="numSets"/>
 		</list>
 	</section>
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog_dialogBounds">
 		<item value="257" key="DIALOG_WIDTH"/>
 		<item value="1|Segoe UI|9.0|0|WINDOWS|1|-12|0|0|0|400|0|0|0|1|0|0|0|0|Segoe UI" key="DIALOG_FONT_NAME"/>
 		<item value="380" key="DIALOG_HEIGHT"/>
-		<item value="992" key="DIALOG_X_ORIGIN"/>
-		<item value="82" key="DIALOG_Y_ORIGIN"/>
+		<item value="484" key="DIALOG_X_ORIGIN"/>
+		<item value="199" key="DIALOG_Y_ORIGIN"/>
 	</section>
 </section>
