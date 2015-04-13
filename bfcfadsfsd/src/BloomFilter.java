@@ -1,147 +1,125 @@
-import java.util.ArrayList;
-import java.util.Random;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+// Sean Szumlanski
+// COP 3503, Fall 2013
 
-public class BloomFilter<AnyType> implements Runnable {
+// BloomFilter.java
+// ================
+// This is an implementation of a Bloom filter where we use multiple hash tables
+// of different lengths (instead of implementing different hash functions). The
+// Bloom filter offers an interesting introduction to probabalistic data
+// structures. See extended notes in Webcourses.
 
-	static int numThreads = 4;
-	static ArrayList<Thread> threads = new ArrayList<Thread>();
-	static ArrayList<BloomFilter<String>> workers = new ArrayList<BloomFilter<String>>();
-	static hashSet[] hashTables;
-	static int tableSize = 53;
-	static int numTables = 5;
-	static ConcurrentLinkedQueue<String> opQueue = new ConcurrentLinkedQueue<String>();
 
-	public static void main(String[] args) {
-		hashTables = new hashSet[numTables];
-		for(int i = 0; i < numTables; i++){
-			hashTables[i] = new hashSet(tableSize, 9);
-		}
-		// initialize threads
-		for (int i = 0; i < numThreads; i++) {
-			BloomFilter<String> temp = new BloomFilter<String>(i);
-			workers.add(temp);
-			threads.add(new Thread(temp));
-		}
+import java.util.*;
 
-		// start all threads
-		for (int i = 0; i < numThreads; i++) {
-			threads.get(i).start();
-		}
-	}
+public class BloomFilter<AnyType>
+{
 	
-	
-	int ID;
-
-	public BloomFilter(int ID) {
-		this.ID = ID;
-	}
-	@Override
-	public void run() {
-		// TODO Auto-generated method stub
+	public static void main(String [] args)
+	{
+		// the sizes of our respective hash tables. another (perhaps more common
+		// approach is to use multiple hash functions.
+		int [] capacities = {11, 13, 17, 19, 23};
 		
-	}
-	static class hashSet{
-		hashSet next;
-		int tableSize, seed;
-		AtomicInteger capacity;
-		boolean full = false;
-		public hashSet(int size, int seed){
-			this.tableSize = size;
-			this.seed = seed;
-			capacity = new AtomicInteger(0);
+		// some names to insert into our data structure
+		String [] names = {"Sean", "Arya", "Robb", "Bran", "Dany"};
+		
+		// these are our primary data structures: a Bloom filter and a hash set
+		BloomFilter<String> b = new BloomFilter<String>(capacities);
+		HashSet<String> h = new HashSet<String>();
+		
+		// insert the names into the Bloom filter. also, store them in a HashSet
+		// so we can later determine in O(1) time whether a randomly generated
+		// string is one of the names from the original names[] array.
+		for (String s : names)
+		{
+			b.add(s);
+			h.add(s);
 		}
-	}
-	
-}
+		
+		// verify that these names made it into the Bloom filter correctly
+		for (String s : names)
+			if (b.contains(s))
+				System.out.println("Found name: " + s);
+		
+		// let's create a ton of random strings and see whether they appear to be
+		// in the Bloom filter! (It will be fun.)
+		char [] rand = new char[4];
+		int cnt = 0, N = 100000;
+		float may = 0, no = 0;
+		for (int j = 0; j < N; j++)
+		{
+			// generate a random string of characters; capitalize the first char
+			for (int i = 0; i < rand.length; i++)
+				rand[i] = (char)((int)(Math.random() * 26) + ((i == 0) ? 'A' : 'a'));
+		
+			// convert array of random chars to a string
+			String s = new String(rand);
 
-/*
-	@Override
-	public void run() {
-		String operation = "";
-		//poll wait-free queue for an operation until queue is empty
-		while ((operation = opQueue.poll()) != null) {
-			// System.out.println(ID + " " + operation);
-			
-			//parse the operation
-			String[] ops = operation.split(" ");
-			//call contains method
-			if (ops[0].equals("con")) {
-				System.out.printf("The bloom filter %s the name %s\n",
-						contains((AnyType) ops[1]) ? "may contain"
-								: "does not contain", ops[1]);
-			} 
-			//call add method
-			else {
-				add((AnyType) ops[1]);
-				System.out.println("Added " + ops[1]);
+			// count how many randomly generated strings appear to be in the Bloom
+			// filter, but were not present in the original array (false positives)
+			if(b.contains(s))
+				may++;
+			else
+				no++;
+			if (!h.contains(s) && b.contains(s))
+			{
+				//System.out.println(s);
+				cnt++;
+				
 			}
 		}
+		System.out.println((no/(no+may)));
+		// print the rate at which we encountered false positives
+		System.out.println("False positives: " + (double)cnt / (double)N * 100.0 + "%");
 	}
-
-	//adds object to the filter
-	public void add(AnyType o) {
-		//generate hash code for the object
+	// we'll use an array of hash tables (an array of arrays) for our Bloom filter
+	boolean [][] hash_tables;
+	
+	// the constructor expects an array of integers telling us how large each of
+	// our hash tables should be
+	BloomFilter(int [] capacities)
+	{
+		// create an array of 'capacities.length' hash tables
+		hash_tables = new boolean[capacities.length][];
+																	
+		// create the hash tables (boolean arrays) with the desired length
+		for (int i = 0; i < capacities.length; i++)
+			hash_tables[i] = new boolean[capacities[i]];
+	}
+	
+	public void add(AnyType o)
+	{
+		// every object has a hashCode() method
 		int hval = o.hashCode();
 		
-		//check for indexOutOfBounds error
-		if (hval < 0)
-			hval = hval*-1;
+		// in the event of integer overflow, we want our hash value to be positive
+		if (hval < 0) hval = hval - Integer.MIN_VALUE;
 		
-		//mark bits that correspond to hash value in each hash set as true
-		for (int i = 0; i < hashTables.length; i++){
-			if(hashTables[i][hval % hashTables[i].length])tableCapacity[i].incrementAndGet();
-			hashTables[i][hval % hashTables[i].length] = true;
-		}
+		// hash the value into each of our hash tables; don't store the value
+		// itself, and don't worry about collisions
+		for (int i = 0; i < hash_tables.length; i++)
+			hash_tables[i][hval % hash_tables[i].length] = true;
 	}
-
-	//checks for object inside the filter
-	public boolean contains(AnyType o) {
-		//generate hash code for the object
+	
+	public boolean contains(AnyType o)
+	{
+		// every object has a hashCode() method
 		int hval = o.hashCode();
 
-		//check for indexOutOfBoundsError
-		if (hval < 0)
-			hval = hval *-1;
-
-		//check bits that correspond to hash value in each hash set
-		//if every bit is marked, the filter MAY contain the object
-		for (int i = 0; i < hashTables.length; i++)
-			if (hashTables[i][hval % hashTables[i].length] == false)
+		// in the event of integer overflow, we want our hash value to be positive
+		if (hval < 0) hval = hval - Integer.MIN_VALUE;
+		
+		// if the object does not collide with 'true' values in each hash table,
+		// then it cannot have been inserted into the Bloom filter. return false.
+		for (int i = 0; i < hash_tables.length; i++)
+			if (hash_tables[i][hval % hash_tables[i].length] == false)
 				return false;
-
+		
+		// if we make it through the guanlet, then we can say this value was
+		// *probably* inserted into the Bloom filter
 		return true;
 	}
-
-*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}
 
 
 

@@ -2,22 +2,25 @@
 <section name="Workbench">
 	<section name="org.eclipse.ui.texteditor.FindReplaceDialog">
 		<item value="false" key="isRegEx"/>
-		<item value="is full" key="selection"/>
+		<item value="print()" key="selection"/>
 		<item value="false" key="casesensitive"/>
 		<item value="false" key="incremental"/>
 		<item value="true" key="wrap"/>
 		<item value="false" key="wholeword"/>
 		<list key="findhistory">
-			<item value="is full"/>
-			<item value="System.out.println"/>
-			<item value="//System.out.println"/>
-			<item value="// System.out.println"/>
-			<item value="System.out.print"/>
-			<item value="system.out.print"/>
-			<item value="system.out"/>
-			<item value="new h"/>
+			<item value="print()"/>
+			<item value="hashitup"/>
+			<item value="AnyType"/>
+			<item value="H_SHIFT"/>
+			<item value="H_BITS"/>
+			<item value="&quot;con"/>
+			<item value="System"/>
+			<item value="add"/>
 		</list>
 		<list key="replacehistory">
+			<item value="String"/>
+			<item value="8"/>
+			<item value="24"/>
 			<item value="//System.out.println"/>
 			<item value="System.out.println"/>
 			<item value="//System.out.print"/>
