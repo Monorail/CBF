@@ -1,0 +1,40 @@
+
+Corpus contains 105445 elements.
+Elements expected: 10
+Elements added: 10
+numTables: 7
+tableSize: 14
+Contains stats: 0 no contain; 0 may contain; NaN% useful
+Time taken: 48ms
+
+Corpus contains 105445 elements.
+Elements expected: 10
+Elements added: 20
+numTables: 7
+tableSize: 14
+Contains stats: 0 no contain; 0 may contain; NaN% useful
+Time taken: 105ms
+
+Corpus contains 105445 elements.
+Elements expected: 10
+Elements added: 10
+numTables: 7
+tableSize: 14
+Contains stats: 10 no contain; 0 may contain; 100.000% useful
+Time taken: 35ms
+
+Corpus contains 105445 elements.
+Elements expected: 10
+Elements added: 20
+numTables: 7
+tableSize: 14
+Contains stats: 18 no contain; 2 may contain; 90.000% useful
+Time taken: 40ms
+
+Corpus contains 105445 elements.
+Elements expected: 10
+Elements added: 30
+numTables: 7
+tableSize: 14
+Contains stats: 26 no contain; 4 may contain; 86.667% useful
+Time taken: 61ms

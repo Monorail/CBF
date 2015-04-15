@@ -1,15 +1,21 @@
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+
 public class BloomFilter<AnyType> implements Runnable {
 
-	static int numThreads = 1;
+	static int numThreads =2;
 	static ArrayList<Thread> threads = new ArrayList<Thread>();
 	static ArrayList<BloomFilter<String>> workers = new ArrayList<BloomFilter<String>>();
 	static hashSet[] hashTables;
@@ -20,37 +26,54 @@ public class BloomFilter<AnyType> implements Runnable {
 	static float errorRate = .01f;
 	static AtomicBoolean[] announceTable;
 	static boolean runDebug = false;
-	static boolean percStats = false;
+	static boolean percStats = true;
 	static boolean usingOF = true;
 	static AtomicInteger mayCon = new AtomicInteger(0);
-	static AtomicInteger noCon = new AtomicInteger(0);
+	static AtomicInteger noCon = new AtomicInteger(0); 
 	// set up wait free queue for adding elements
 	static ConcurrentLinkedQueue<String> opQueue = new ConcurrentLinkedQueue<String>();
-
+	
+	
+	
 	public static double log2(double L) {
 		return Math.log(L) / Math.log(2);
 	}
 
 	public static void main(String[] args) throws FileNotFoundException, InterruptedException {
-		Scanner sc = new Scanner(new File("corp2.txt"));
+		
+		try {
+			PrintWriter writer = new PrintWriter(new BufferedWriter( new FileWriter("BF_Results.txt",true)));
+		
+		
+		if(args.length < 2){
+			System.out.println("Incorrect args");
+			System.exit(0);
+		}
+		
+		Scanner sc = new Scanner(new File("magicrules.txt"));
 
 		// sample strings
 		ArrayList<String> corpus = new ArrayList<String>();
 		while (sc.hasNext()) {
 			corpus.add(sc.next());
 		}
-		sc = new Scanner(System.in);
-		System.out.println("copr"+ corpus.size());
-		System.out.println("How many elements are you expecting?");
-		expectedElems = sc.nextInt();
-		System.out.println("How many elements are you adding?");
-		numElems = sc.nextInt();
+		//sc = new Scanner(System.in);
+		
+		writer.println();
+		writer.println("Corpus contains "+ corpus.size() + " elements.");
+		writer.println("Elements expected: "+ Integer.parseInt(args[0]));
+		expectedElems = Integer.parseInt(args[0]);//sc.nextInt();
+		writer.println("Elements added: "+ Integer.parseInt(args[1]));
+		numElems = Integer.parseInt(args[1]); //sc.nextInt();
+		
+		
 		numTables = (int) Math.ceil(log2(1.0f / errorRate));
 		//10 proven to be best bit/element ratio
 		tableSize = (int) Math.ceil(expectedElems * Math.abs(Math.log(.01f)) / ((Math.log(2) * Math.log(2)) * numTables));
 		
-		System.out.println("numTables: " + numTables);
-		System.out.println("tableSize: " + tableSize);
+		
+		writer.println("numTables: " + numTables);
+		writer.println("tableSize: " + tableSize);
 		// sc.next();
 		// initialize hash table and capacity array
 		hashTables = new hashSet[numTables];
@@ -59,13 +82,16 @@ public class BloomFilter<AnyType> implements Runnable {
 			hashTables[i] = new hashSet(tableSize, i, 0);
 			announceTable[i] = new AtomicBoolean(false);
 		}
-
-		String[] filterStrs = corpus.toArray(new String[corpus.size()]);// =
-
+		Collections.shuffle(corpus);
+		
+		String[] filterStrs = corpus.toArray(new String[corpus.size()]);// 
+		
 		// generate add operations at random to perform
 		Random R = new Random();
 		int addedAdds = 0, contAdds = 0;
 		// for (int i = 0; i < numElems; i++) {
+		
+		
 		while (addedAdds != numElems || contAdds != numElems) {
 			Boolean opAdd = R.nextBoolean();
 			String operation="";
@@ -79,6 +105,19 @@ public class BloomFilter<AnyType> implements Runnable {
 			}
 			// System.out.println(operation);
 		}
+		
+//		for(int i=0; i< numElems;i++){
+//			int strsIndex = R.nextInt(filterStrs.length);
+//			opQueue.add("add "+filterStrs[strsIndex]);
+//		}
+//		
+//		for(int i= 0; i<numElems;i++){
+//			int strsIndex = R.nextInt(filterStrs.length);
+//			opQueue.add("con "+filterStrs[strsIndex]);
+//		}
+		
+		
+		
 
 		// initialize threads
 		for (int i = 0; i < numThreads; i++) {
@@ -94,10 +133,15 @@ public class BloomFilter<AnyType> implements Runnable {
 		for (int i = 0; i < numThreads; i++)
 			threads.get(i).join();
 		if (percStats)
-			System.out.printf("Contains stats: %d no contain; %d may contain; %3.3f%% useful\n", noCon.get(), mayCon.get(), ((float) noCon.get()
+			writer.printf("Contains stats: %d no contain; %d may contain; %3.3f%% useful\n", noCon.get(), mayCon.get(), ((float) noCon.get()
 					/ (noCon.get() + mayCon.get()) * 100));
 		//print();
-		System.out.println("Time taken: " + (System.currentTimeMillis() - startTime) + "ms");
+		writer.println("Time taken: " + (System.currentTimeMillis() - startTime) + "ms");
+		writer.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	int ID;
@@ -114,13 +158,14 @@ public class BloomFilter<AnyType> implements Runnable {
 			// System.out.println(ID + " " + operation);
 
 			// parse the operation
+			//System.out.println("Thread "+ ID + ": " +operation);
 			String[] ops = operation.split(" ");
 			// call contains method
 			if (ops[0].equals("con")) {
 				if (contains((AnyType) ops[1]) && runDebug) {
-					System.out.println("The bloom filter may contain the name " + ops[1]);
+					//System.out.println("The bloom filter may contain the string \"" + ops[1] + "\"");
 				} else if (runDebug) {
-					System.out.println("The bloom filter does not contain the name " + ops[1]);
+					//System.out.println("The bloom filter does not contain the string \"" + ops[1]+ "\"");
 				}
 			}
 
@@ -137,8 +182,8 @@ public class BloomFilter<AnyType> implements Runnable {
 		// mark bits that correspond to hash value in each hash set as true
 		// int
 		for (int i = 0; i < hashTables.length; i++) {
-			int hVal = Math.abs(MurmurHash.hashItUp((String)o, i) % tableSize);
-			hashTables[i].add(hVal);
+			
+			hashTables[i].add((String)o);
 			// if(i ==4)
 			// System.out.println(hVal);
 		}
@@ -153,8 +198,8 @@ public class BloomFilter<AnyType> implements Runnable {
 		// check bits that correspond to hash value in each hash set
 		// if every bit is marked, the filter MAY contain the object
 		for (int i = 0; i < hashTables.length; i++) {
-			int hval = Math.abs(MurmurHash.hashItUp((String)o, i) % tableSize);
-			if (!hashTables[i].contains(hval % tableSize)) {
+			//int hval = Math.abs(MurmurHash.hashItUp((String)o, i) );
+			if (!hashTables[i].contains((String)o)) {
 				if (percStats) {
 					noCon.getAndIncrement();
 				}
@@ -165,7 +210,7 @@ public class BloomFilter<AnyType> implements Runnable {
 		if (percStats) {
 			mayCon.getAndIncrement();
 		}
-//		print();
+		//print();
 		return true;
 	}
 
@@ -195,12 +240,13 @@ public class BloomFilter<AnyType> implements Runnable {
 				// //System.out.println("set");
 				set[i] = false;
 			}
-			System.out.println(ID + " created hashLink " + link);
+			//System.out.println(ID + " created hashLink " + link);
 
 		}
 
-		public boolean contains(int index) {
-			if (set[index % tableSize]) {
+		public boolean contains(String o) {
+			int hVal=MurmurHash.hashItUp(o,ID);
+			if (set[hVal % tableSize]) {
 				// if(runDebug)
 				// System.out.println(ID +"[" +index%tableSize
 				// +"] return true");
@@ -214,18 +260,26 @@ public class BloomFilter<AnyType> implements Runnable {
 				// +"] return false");
 				return false;
 			}
-			return set[index % tableSize] || next.contains(index % tableSize);
+			return next.contains(o);
 		}
 
-		public void add(int index) {
+		public void add(String o) {
 			// if the hash set is not full
 			//System.out.println("derp");
-			if (set[index % tableSize]) {
+			
+			int hVal = Math.abs(MurmurHash.hashItUp((String)o, ID) );
+			
+			
+			if(set[hVal%tableSize]){
 				return;
 			}
+			
 			if (!full) {
 				// set the index value to true
 				// count fullness
+				
+				set[hVal % tableSize] = true;
+				
 				int capacity = 0;
 				for (boolean b : set)
 					if (b)
@@ -241,7 +295,7 @@ public class BloomFilter<AnyType> implements Runnable {
 					full = false;
 					System.out.println("full false");
 				}
-				set[index % tableSize] = true;
+				
 				// if the hash set is full
 				return;
 			}
@@ -252,39 +306,38 @@ public class BloomFilter<AnyType> implements Runnable {
 			//System.out.println("free");
 			if (next != null) {
 				// System.out.println(ID + " adding to next");
-				next.add(index);
+				next.add(o);
 				return;
 			}
 			// and another thread is not creating the overflow table
-			if (announceTable[ID].compareAndSet(false, true)) {
+			if (announceTable[ID%numTables].compareAndSet(false, true)) {
 
 				// System.out.println(ID + " lock acquired");
 				// and the overflow table doesn't exist
 				if (next == null) {
-					 System.out.println(ID + " creating overflow table");
+					// System.out.println(ID + " creating overflow table");
 					// create the overflow table
 					// System.out.println("Creating overflow table for hashset #" + ID);
-					next = new hashSet(tableSize, ID, link + 1);
-					next.add(index);
-					announceTable[ID].set(false);
-					if (announceTable[ID].get()) {
+					next = new hashSet(tableSize, ID+numTables, link + 1);
+					next.add(o);
+					announceTable[ID%numTables].set(false);
+					if (announceTable[ID%numTables].get()) {
 						System.out.println(ID + " critical CAS money failure");
 					}
 
 					// and the overflow table does exist
 				} else {
-					next.add(index);
-					announceTable[ID].set(false);
+					next.add(o);
+					announceTable[ID%numTables].set(false);
 					// if (next == null)
 					// System.out.println("1 goat ladder");
 				}
 			} else {
 				// System.out.println(ID + " another thread is handling it");
-				while (announceTable[ID].get())
-					;
+				while (announceTable[ID%numTables].get());
 				// if (next == null)
 				// System.out.println("2 goat ladder");
-				next.add(index);
+				next.add(o);
 			}
 
 		}
