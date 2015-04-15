@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Hashtable;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -19,6 +20,7 @@ public class BloomFilter<AnyType> implements Runnable {
 	static ArrayList<Thread> threads = new ArrayList<Thread>();
 	static ArrayList<BloomFilter<String>> workers = new ArrayList<BloomFilter<String>>();
 	static hashSet[] hashTables;
+	static Hashtable testCompare;
 	static int tableSize;
 	static int numTables;
 	static int numElems = 1000;
@@ -59,21 +61,21 @@ public class BloomFilter<AnyType> implements Runnable {
 		}
 		//sc = new Scanner(System.in);
 		
-		writer.println();
-		writer.println("Corpus contains "+ corpus.size() + " elements.");
-		writer.println("Elements expected: "+ Integer.parseInt(args[0]));
+		//writer.print(corpus.size() + " ");
+		writer.print(Integer.parseInt(args[0])+" ");
 		expectedElems = Integer.parseInt(args[0]);//sc.nextInt();
-		writer.println("Elements added: "+ Integer.parseInt(args[1]));
+		writer.print(Integer.parseInt(args[1])+ " ");
 		numElems = Integer.parseInt(args[1]); //sc.nextInt();
 		
 		
+		testCompare= new Hashtable(expectedElems,0.5f);
 		numTables = (int) Math.ceil(log2(1.0f / errorRate));
 		//10 proven to be best bit/element ratio
 		tableSize = (int) Math.ceil(expectedElems * Math.abs(Math.log(.01f)) / ((Math.log(2) * Math.log(2)) * numTables));
 		
 		
-		writer.println("numTables: " + numTables);
-		writer.println("tableSize: " + tableSize);
+		//writer.println("numTables: " + numTables);
+		writer.print(tableSize+ " ");
 		// sc.next();
 		// initialize hash table and capacity array
 		hashTables = new hashSet[numTables];
@@ -103,6 +105,7 @@ public class BloomFilter<AnyType> implements Runnable {
 				contAdds++;
 				opQueue.add("con " + filterStrs[strsIndex]);
 			}
+			
 			// System.out.println(operation);
 		}
 		
@@ -133,10 +136,11 @@ public class BloomFilter<AnyType> implements Runnable {
 		for (int i = 0; i < numThreads; i++)
 			threads.get(i).join();
 		if (percStats)
-			writer.printf("Contains stats: %d no contain; %d may contain; %3.3f%% useful\n", noCon.get(), mayCon.get(), ((float) noCon.get()
-					/ (noCon.get() + mayCon.get()) * 100));
+			writer.printf("%d %d", noCon.get(), mayCon.get());
+			
 		//print();
-		writer.println("Time taken: " + (System.currentTimeMillis() - startTime) + "ms");
+		//writer.println("Time taken: " + (System.currentTimeMillis() - startTime) + "ms");
+		writer.println();
 		writer.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -171,6 +175,7 @@ public class BloomFilter<AnyType> implements Runnable {
 
 			// call add method
 			else {
+				testCompare.put(MurmurHash.MurmurHash2(ops[1], 100020233), ops[1]);
 				add((AnyType) ops[1]);
 				// System.out.println("Added " + ops[1]);
 			}
@@ -197,19 +202,21 @@ public class BloomFilter<AnyType> implements Runnable {
 		// generate hash code for the object
 		// check bits that correspond to hash value in each hash set
 		// if every bit is marked, the filter MAY contain the object
+		
+		if (!testCompare.contains((String)o)&& percStats ){
+			noCon.getAndIncrement();
+		}
 		for (int i = 0; i < hashTables.length; i++) {
 			//int hval = Math.abs(MurmurHash.hashItUp((String)o, i) );
 			if (!hashTables[i].contains((String)o)) {
 				if (percStats) {
-					noCon.getAndIncrement();
+					mayCon.getAndIncrement();
 				}
 //				print();
 				return false;
 			}
 		}
-		if (percStats) {
-			mayCon.getAndIncrement();
-		}
+		
 		//print();
 		return true;
 	}
