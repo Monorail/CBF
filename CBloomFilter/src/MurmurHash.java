@@ -1,8 +1,12 @@
+import java.util.Scanner;
+
 public class MurmurHash {
 	
 	public static void main(String args[]){
-		String one="hi";
-		String two="bye";
+		Scanner sc= new Scanner(System.in);
+		
+		String one=sc.nextLine();
+		String two=sc.nextLine();
 		for(int i=0;i<7;i++){
 			System.out.println("hi "+i+": "+hashItUp(one,i));
 			System.out.println("bye "+i+": "+hashItUp(two,i));
@@ -11,12 +15,11 @@ public class MurmurHash {
 	
 	public static int hashItUp(String key, int i) {
 
-//		int hone= key.hashCode();
-//		int htwo = MurmurHash2(key, 100020233);
-//		
-//
-//		return hone + i * htwo;
-		return MurmurHash2(key, i);
+		int hone= key.hashCode();
+		int htwo = MurmurHash2(key, 100020233);
+		
+
+		return Math.abs(hone + i * htwo);
 	}
 	
 	   public static int MurmurHash2(final String text, int seed) {
